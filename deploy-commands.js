@@ -15,6 +15,12 @@ const commands = [
 		.setDescription('Show cool stats about Zcash.')
 		.setDescriptionLocalizations({
 			"pt-BR": "Mostra estatísticas sobre a criptomoeda Zcash."
+		}),
+	new SlashCommandBuilder()
+		.setName('zcountdown')
+		.setDescription('Display a Zcash Halving Countdown.')
+		.setDescriptionLocalizations({
+			"pt-BR": "Mostra uma contagem regressiva para o próximo halving da Zcash."
 		})
 ].map(command => command.toJSON());
 

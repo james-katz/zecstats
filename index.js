@@ -54,7 +54,23 @@ const languages = {
         blocks_mined: 'Blocos minerados 24h',
         hashrate: 'Hashrate da rede',
         volume: 'Volume 24h',
-        credits: 'Dados fornecidos por CoinGecko e BlockChair'
+        credits: 'Dados fornecidos por CoinGecko e BlockChair',
+        cd_title: 'Zcash Halving Contagem Regressiva',
+        cd_description: 'Estatísticas sobre o próximo halving da Zcash',
+        cd_curr_height: 'Alturo do bloco atual',
+        cd_halv_height: 'Altura do bloco do Halving',
+        cd_remain_blocks: 'Blocos restantes',
+        cd_date: 'Quando será o halving?',
+        cd_countdown: 'Contagem Regressiva',
+        cd_aprox_date: 'As datas são aproximadas, baseadas no tempo médio do bloco.',
+        cd_sec: ' segundo.',
+        cd_secs: ' segundoss.',
+        cd_min: ' minuto ',
+        cd_mins: ' minutos ',
+        cd_hours: ' horas ',
+        cd_hour: ' hora ',
+        cd_day: ' dia ',
+        cd_days: ' dias '
     },
     en: {
         title: 'Zcash - Stats',
@@ -85,7 +101,23 @@ const languages = {
         blocks_mined: 'Mined blocks 24h',
         hashrate: 'Network Hashrate',
         volume: 'Volume 24h',
-        credits: 'All data privided by CoinGecko and BlockChair'
+        credits: 'All data provided by CoinGecko and BlockChair',
+        cd_title: 'Zcash Halving Countdown',
+        cd_description: 'Statistics about Zcash Halving.',
+        cd_curr_height: 'Current height',
+        cd_halv_height: 'Halving height',
+        cd_remain_blocks: 'Remaining blocks',
+        cd_date: 'When it will happen?',
+        cd_countdown: 'Countdown',
+        cd_aprox_date: 'Dates are approximated based on block time average.',
+        cd_sec: ' second.',
+        cd_secs: ' seconds.',
+        cd_min: ' minute ',
+        cd_mins: ' minutes ',
+        cd_hours: ' hours ',
+        cd_hour: ' hour ',
+        cd_day: ' day ',
+        cd_days: ' days '        
     }
 }
 
@@ -171,9 +203,43 @@ client.on('interactionCreate', async interaction => {
             .setFooter({text: local.credits})
             
         await interaction.editReply({embeds: [zcashEmbed], files: [attach]})
-        .catch(err => {
+        .catch(err => {            
             console.log(err);
         })
+    }
+
+    if(commandName == 'zcountdown') {
+        await interaction.deferReply();
+        const local = interaction.locale == 'pt-BR' ? languages.pt : languages.en;
+
+        const res = await axios.get('http://3.145.101.81:3001/');
+        const countdown = res.data;
+        
+        const d = countdown.countdown.days;
+        const h = countdown.countdown.hours;
+        const m = countdown.countdown.mins;
+        const s = countdown.countdown.secs;
+        
+        const remaining = d + (d > 1 ? local.cd_days : local.cd_day) + h + (h > 1 ? local.cd_hours : local.cd_hour) + m + (m > 1 ? local.cd_mins : local.cd_min) + s + (s > 1 ? local.cd_secs : local.cd_sec);
+        const halvingDate = new Date(countdown.halving_date);
+        
+        const countdownEmbed = new EmbedBuilder()
+            .setTitle(local.cd_title)
+            .setColor(0x2e93a1)
+            .setDescription(local.cd_description)
+            .addFields([
+                {name: local.cd_curr_height, value: countdown.height.toLocaleString(), inline: true},
+                {name: local.cd_halv_height, value: countdown.next_halving.toLocaleString(), inline: true},
+                {name: local.cd_remain_blocks, value: countdown.remaining_blocks.toLocaleString(), inline: true},
+            ])
+            .addFields([
+                {name: local.cd_date, value: '🗓️ ' + (halvingDate.toLocaleDateString() + ' 🕙 ' + halvingDate.toLocaleTimeString())},
+                {name: local.cd_countdown, value: remaining}
+            ])
+            .setFooter({text: local.cd_aprox_date})
+            .setTimestamp();
+
+        await interaction.editReply({embeds:[countdownEmbed]}).catch();
     }
 });
 
