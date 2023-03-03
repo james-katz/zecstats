@@ -57,14 +57,14 @@ const languages = {
         credits: 'Dados fornecidos por CoinGecko e BlockChair',
         cd_title: 'Zcash Halving Contagem Regressiva',
         cd_description: 'Estatísticas sobre o próximo halving da Zcash',
-        cd_curr_height: 'Alturo do bloco atual',
+        cd_curr_height: 'Altura do bloco atual',
         cd_halv_height: 'Altura do bloco do Halving',
         cd_remain_blocks: 'Blocos restantes',
         cd_date: 'Quando será o halving?',
         cd_countdown: 'Contagem Regressiva',
         cd_aprox_date: 'As datas são aproximadas, baseadas no tempo médio do bloco.',
         cd_sec: ' segundo.',
-        cd_secs: ' segundoss.',
+        cd_secs: ' segundos.',
         cd_min: ' minuto ',
         cd_mins: ' minutos ',
         cd_hours: ' horas ',
@@ -233,7 +233,7 @@ client.on('interactionCreate', async interaction => {
                 {name: local.cd_remain_blocks, value: countdown.remaining_blocks.toLocaleString(), inline: true},
             ])
             .addFields([
-                {name: local.cd_date, value: '🗓️ ' + (halvingDate.toLocaleDateString() + ' 🕙 ' + halvingDate.toLocaleTimeString())},
+                {name: local.cd_date, value: '🗓️ ' + (halvingDate.toLocaleDateString(interaction.locale) + ' 🕙 ' + halvingDate.toLocaleTimeString(interaction.locale, {timeZone: 'Etc/UTC', timeStyle: 'short'}) + ' (UTC)')},
                 {name: local.cd_countdown, value: remaining}
             ])
             .setFooter({text: local.cd_aprox_date})
