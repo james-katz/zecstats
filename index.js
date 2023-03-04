@@ -59,6 +59,8 @@ const languages = {
         cd_description: 'Estatísticas sobre o próximo halving da Zcash',
         cd_curr_height: 'Altura do bloco atual',
         cd_halv_height: 'Altura do bloco do Halving',
+        cd_curr_subsidy: 'Recompenha atual',
+        cd_halv_subsidy: 'Recompensa após o Halving',
         cd_remain_blocks: 'Blocos restantes',
         cd_date: 'Quando será o halving?',
         cd_countdown: 'Contagem Regressiva',
@@ -106,6 +108,8 @@ const languages = {
         cd_description: 'Statistics about Zcash Halving.',
         cd_curr_height: 'Current height',
         cd_halv_height: 'Halving height',
+        cd_curr_subsidy: 'Current block reward',
+        cd_halv_subsidy: 'Block reward after halving',
         cd_remain_blocks: 'Remaining blocks',
         cd_date: 'When it will happen?',
         cd_countdown: 'Countdown',
@@ -239,6 +243,10 @@ client.on('interactionCreate', async interaction => {
                 {name: local.cd_curr_height, value: countdown.height.toLocaleString(), inline: true},
                 {name: local.cd_halv_height, value: countdown.next_halving.toLocaleString(), inline: true},
                 {name: local.cd_remain_blocks, value: countdown.remaining_blocks.toLocaleString(), inline: true},
+            ])
+            .addFields([
+                {name: local.cd_curr_subsidy, value: (countdown.current_subsidy / 10**8).toLocaleString() + ' ZEC', inline: true},
+                {name: local.cd_halv_subsidy, value: (countdown.next_subsidy / 10**8).toLocaleString() + ' ZEC', inline: true},
             ])
             .addFields([
                 {name: local.cd_date, value: '🗓️ ' + (halvingDate.toLocaleDateString(interaction.locale) + ' 🕙 ' + halvingDate.toLocaleTimeString(interaction.locale, {timeZone: 'Etc/UTC', timeStyle: 'short'}) + ' (UTC)')},
