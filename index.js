@@ -35,7 +35,7 @@ const languages = {
         market_btc: 'Preço de mercado (btc)',
         market_brl: 'Preço de mercado (brl)',
         price_low: 'Menor preço 24h',
-        price_high: 'Mario preço 24h',
+        price_high: 'Maior preço 24h',
         price_percent: 'Flutuação 24h',
         atl_price: 'Baixa histórica (usd)',
         atl_date: 'Data',
@@ -130,6 +130,10 @@ client.on('interactionCreate', async interaction => {
         const local = interaction.locale == 'pt-BR' ? languages.pt : languages.en;
         
         const bc = await axios.get('https://api.blockchair.com/zcash/stats');
+        if(!res) {
+            await interaction.editReply('error')
+            return;
+        }
         const blockChair = bc.data;
 
         const params = {
@@ -143,7 +147,7 @@ client.on('interactionCreate', async interaction => {
         const res = await CoinGeckoClient.coins.fetch('zcash', params);
         
         if(!res || !res.success) {
-            await interaction.reply('error')
+            await interaction.editReply('error')
             return;
         }
         const [chart, uuid] = await createChart();
@@ -213,6 +217,10 @@ client.on('interactionCreate', async interaction => {
         const local = interaction.locale == 'pt-BR' ? languages.pt : languages.en;
 
         const res = await axios.get('http://3.145.101.81:3001/');
+        if(!res) {
+            await interaction.editReply('error')
+            return;
+        }
         const countdown = res.data;
         
         const d = countdown.countdown.days;
