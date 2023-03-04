@@ -130,7 +130,7 @@ client.on('interactionCreate', async interaction => {
         const local = interaction.locale == 'pt-BR' ? languages.pt : languages.en;
         
         const bc = await axios.get('https://api.blockchair.com/zcash/stats');
-        if(!res) {
+        if(!bc) {
             await interaction.editReply('error')
             return;
         }
