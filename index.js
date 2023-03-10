@@ -133,11 +133,14 @@ client.on('interactionCreate', async interaction => {
         interaction.deferReply();
         const local = interaction.locale == 'pt-BR' ? languages.pt : languages.en;
         
-        const bc = await axios.get('https://api.blockchair.com/zcash/stats');
-        if(!bc) {
-            await interaction.editReply('error')
+        let bc;
+        try {
+            bc = await axios.get('https://api.blockchair.com/zcash/stats');
+        } catch(err) {
+            interaction.editReply('BlockChair API is unavaiable.\n' + err);
             return;
         }
+                
         const blockChair = bc.data;
 
         const params = {
@@ -151,7 +154,7 @@ client.on('interactionCreate', async interaction => {
         const res = await CoinGeckoClient.coins.fetch('zcash', params);
         
         if(!res || !res.success) {
-            await interaction.editReply('error')
+            await interaction.editReply('CoinGecko API is unavaible.\n');
             return;
         }
         const [chart, uuid] = await createChart();
@@ -220,11 +223,14 @@ client.on('interactionCreate', async interaction => {
         await interaction.deferReply();
         const local = interaction.locale == 'pt-BR' ? languages.pt : languages.en;
 
-        const res = await axios.get('http://3.145.101.81:3001/');
-        if(!res) {
-            await interaction.editReply('error')
+        let res;
+        try {
+            res = await axios.get('http://3.145.101.81:3001/');
+        } catch(err) {
+            interaction.editReply('Countdown API is unavaiavle.\n' + err);
             return;
-        }
+        };
+        
         const countdown = res.data;
         
         const d = countdown.countdown.days;
