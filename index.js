@@ -143,21 +143,7 @@ client.on('interactionCreate', async interaction => {
                 
         const blockChair = bc.data;
 
-        const params = {
-            tickers: false,
-            market_data: true,
-            community_data: false,
-            developer_data: false,
-            localization: false,
-            sparkline: false
-        };
-        let res;
-        try {
-            res = await CoinGeckoClient.coins.fetch('zcash', params);
-        }
-        catch(err) {
-            console.log(err);
-        }
+        const res = await fetchCoinGECKO();
 
         if(!res || !res.success) {
             await interaction.editReply('CoinGecko API is unavaible.\n');
@@ -318,4 +304,21 @@ async function createChart() {
     return [buffer, uuid];
 }
 
+async function fetchCoinGECKO() {
+    let res;    
+    try {
+        res = await CoinGeckoClient.coins.fetch('zcash', {
+            tickers: false,
+            market_data: true,
+            community_data: false,
+            developer_data: false,
+            localization: false,
+            sparkline: false
+        });
+    }
+    catch(err) {
+        console.log(err);
+    }
+    return res;
+}
 client.login(process.env.DISCORD_TOKEN);
