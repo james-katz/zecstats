@@ -151,8 +151,14 @@ client.on('interactionCreate', async interaction => {
             localization: false,
             sparkline: false
         };
-        const res = await CoinGeckoClient.coins.fetch('zcash', params);
-        
+        let res;
+        try {
+            res = await CoinGeckoClient.coins.fetch('zcash', params);
+        }
+        catch(err) {
+            console.log(err);
+        }
+
         if(!res || !res.success) {
             await interaction.editReply('CoinGecko API is unavaible.\n');
             return;
@@ -278,7 +284,7 @@ async function createChart() {
         //labels: mapped,
         datasets: [
             {
-                label: 'Preço $ZEC 24h',
+                label: 'Price $ZEC 24h',
                 data: mapped,
                 borderColor: '#f4b724',
                 backgroundColor: '#f4b72444',
