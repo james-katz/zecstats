@@ -59,7 +59,7 @@ const languages = {
         cd_description: 'Estatísticas sobre o próximo halving da Zcash',
         cd_curr_height: 'Altura do bloco atual',
         cd_halv_height: 'Altura do bloco do Halving',
-        cd_curr_subsidy: 'Recompenha atual',
+        cd_curr_subsidy: 'Recompensa atual',
         cd_halv_subsidy: 'Recompensa após o Halving',
         cd_remain_blocks: 'Blocos restantes',
         cd_date: 'Quando será o halving?',
