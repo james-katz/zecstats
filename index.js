@@ -219,7 +219,7 @@ client.on('interactionCreate', async interaction => {
 
         let res;
         try {
-            res = await axios.get('http://3.145.101.81:3001/');
+            res = await axios.get('http://13.58.71.62:3001/');
         } catch(err) {
             interaction.editReply('Countdown API is unavaiavle.\n' + err);
             return;
