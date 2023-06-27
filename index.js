@@ -7,6 +7,7 @@ const { ChartJSNodeCanvas } = require('chartjs-node-canvas');
 const { v4: uuidv4 } = require('uuid');
 
 const dotenv = require('dotenv');
+const coingeckoApi = require('coingecko-api');
 
 dotenv.config();
 const CoinGeckoClient = new CoinGecko();
@@ -15,7 +16,8 @@ const chartJSNodeCanvas = new ChartJSNodeCanvas({ width: 1000, height: 600, back
 const client = new Client({
     intents: [
        GatewayIntentBits.Guilds,
-       GatewayIntentBits.GuildMessages,    
+       GatewayIntentBits.GuildMessages,   
+       GatewayIntentBits.MessageContent
    ],
 });
 console.log("Booting...");
@@ -321,4 +323,55 @@ async function fetchCoinGECKO() {
     }
     return res;
 }
+
+client.on('messageCreate', async (i) => {
+    if(i.author.bot) return;
+    const cmd = i.content.split(' ');
+    
+    if(cmd[0].toLowerCase() == '$zconvert' || cmd[0].toLowerCase() == '$zconv') {
+        const amountZec = parseFloat(cmd[1].replace(/,/g,'.'));
+        const currency = cmd[4];
+        if(isNaN(amountZec) || !cmd[4]) {
+            await i.reply({embeds: [{                
+                title: '🚫 Command error!',
+                color: 0xff0000,
+                description: `I didn't understand your command.\nTo convert **ZEC** amount to fiat currency try the following command:\n\`$zconvert <amount> ZEC to <fiat_currency>\``
+            }]});
+            return;
+        }
+
+        if(amountZec <= 0 || amountZec > 21000000) {
+            await i.reply({embeds: [{                
+                title: '🚫 Amount error!',
+                color: 0xff0000,
+                description: `This is not a valid ZEC amount.\nPlease provide an amount greater than *zero* and less than 21 million.`
+            }]});
+            return;
+        }
+
+        const validFiat = await CoinGeckoClient.simple.supportedVsCurrencies();
+        if(!validFiat.data.includes(currency.toLowerCase())) {
+            await i.reply({embeds: [{                
+                title: '🚫 Currency error!',
+                color: 0xff0000,
+                description: `Sorry, ${currency} is not recognized as a valid fiat currency.`
+            }]});
+            return;
+        }
+        const zecPrice = await CoinGeckoClient.simple.price({
+            ids: 'zcash',
+            vs_currencies: currency.toLowerCase()
+        });        
+        
+        await i.reply({embeds: [{                
+            title: '<:zcash:1060629265961472080> ZEC conversion tool',
+            color: 0xf4b728,
+            description: `You're converting **${amountZec} ZEC** to **${currency}**.`,
+            fields: [
+                {name: 'ZEC amount', value: `<:zcash:1060629265961472080> ${amountZec} ZEC`, inline: true},
+                {name: `Equivalent in ${currency.toUpperCase()}`, value: `$ ${(Object.values(zecPrice.data.zcash) * amountZec).toLocaleString()} ${currency.toUpperCase()}`, inline: true}
+            ]
+        }]});
+    }        
+})
 client.login(process.env.DISCORD_TOKEN);
