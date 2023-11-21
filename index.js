@@ -405,11 +405,11 @@ client.on('messageCreate', async (i) => {
             color: 0xf4b728,
             description: `Check Zcash $ZEC supply in each value pool.`,
             fields: [
-                {name: 'Total Supply', value: `<:zcash:1060629265961472080> **${blockchainInfo.data.chainSupply.chainValue} ZEC**`, inline: false},
-                {name: 'Transparent', value: `<:zcash:1060629265961472080> **${blockchainInfo.data.valuePools[0].chainValue} ZEC**`, inline: false},
-                {name: 'Sprout', value: `<:zcash:1060629265961472080> **${blockchainInfo.data.valuePools[1].chainValue} ZEC**`, inline: false},
-                {name: 'Sapling', value: `<:zcash:1060629265961472080> **${blockchainInfo.data.valuePools[2].chainValue} ZEC**`, inline: true},
-                {name: 'Orchard', value: `<:zcash:1060629265961472080> **${blockchainInfo.data.valuePools[3].chainValue} ZEC**`, inline: false},                
+                {name: 'Total Supply', value: `<:zcash:1060629265961472080> **${blockchainInfo.data.chainSupply.chainValue.toLocaleString('en-US')} ZEC**`, inline: false},
+                {name: 'Transparent', value: `<:zcash:1060629265961472080> **${blockchainInfo.data.valuePools[0].chainValue.toLocaleString('en-US')} ZEC**`, inline: false},
+                {name: 'Sprout', value: `<:zcash:1060629265961472080> **${blockchainInfo.data.valuePools[1].chainValue.toLocaleString('en-US')} ZEC**`, inline: false},
+                {name: 'Sapling', value: `<:zcash:1060629265961472080> **${blockchainInfo.data.valuePools[2].chainValue.toLocaleString('en-US')} ZEC**`, inline: true},
+                {name: 'Orchard', value: `<:zcash:1060629265961472080> **${blockchainInfo.data.valuePools[3].chainValue.toLocaleString('en-US')} ZEC**`, inline: false},                
             ],
             footer: {text: 'Data provided by ZcashBlockExplorer API'},
             timestamp: new Date()
