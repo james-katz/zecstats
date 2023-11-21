@@ -349,6 +349,7 @@ client.on('messageCreate', async (i) => {
         }
         else {
             if(!validFiat.data.includes(convertFrom.toLowerCase())) currencyError = true;
+            // if(currency.toLowerCase() !== 'zec') currencyError = true;
         }
 
         if(currencyError) {
@@ -387,6 +388,33 @@ client.on('messageCreate', async (i) => {
                 {name: `Equivalent in ${convertFrom.toLowerCase() === 'zec' ? currency.toUpperCase() : convertFrom.toUpperCase()}`, value: `$ ${(Object.values(zecPrice.data.zcash) * amountZec).toLocaleString()} ${convertFrom.toLowerCase() === 'zec' ? currency.toUpperCase() : convertFrom.toUpperCase()}`, inline: true}
             ]
         }]});
-    }        
+    }
+
+    else if(cmd[0].toLowerCase() == '$zpool' || cmd[0].toLowerCase() == '$zpools' || cmd[0].toLowerCase() == '$poolz') {
+        await i.channel.sendTyping();
+        let blockchainInfo;
+        try {
+            blockchainInfo = await axios.get('https://zcashblockexplorer.com/api/v1/blockchain-info');
+        } catch(err) {
+            interaction.editReply('ZcashBlockExplorer API is unavaiable.\n' + err);
+            return;
+        }
+        // console.log(blockchainInfo.data.valuePools)
+        await i.reply({embeds: [{                
+            title: '<:zcash:1060629265961472080> Chain Value Pool Info',
+            color: 0xf4b728,
+            description: `Check Zcash $ZEC supply in each value pool.`,
+            fields: [
+                {name: 'Total Supply', value: `<:zcash:1060629265961472080> **${blockchainInfo.data.chainSupply.chainValue} ZEC**`, inline: false},
+                {name: 'Transparent', value: `<:zcash:1060629265961472080> **${blockchainInfo.data.valuePools[0].chainValue} ZEC**`, inline: false},
+                {name: 'Sprout', value: `<:zcash:1060629265961472080> **${blockchainInfo.data.valuePools[1].chainValue} ZEC**`, inline: false},
+                {name: 'Sapling', value: `<:zcash:1060629265961472080> **${blockchainInfo.data.valuePools[2].chainValue} ZEC**`, inline: true},
+                {name: 'Orchard', value: `<:zcash:1060629265961472080> **${blockchainInfo.data.valuePools[3].chainValue} ZEC**`, inline: false},                
+            ],
+            footer: {text: 'Data provided by ZcashBlockExplorer API'},
+            timestamp: new Date()
+        }]});
+
+    }
 })
 client.login(process.env.DISCORD_TOKEN);
