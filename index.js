@@ -439,8 +439,8 @@ client.on('messageCreate', async (i) => {
             .setDescription(`Details for transaction id [${txid}](https://3xpl.com/zcash/transaction/${txid})`)
             .setThumbnail("https://bitzecbzc.github.io/wp-content/uploads/2019/03/zcash-icon-fullcolor.png")
             .addFields([
-                {name: "Block", value: (in_block > 0 ? `${in_block}` : "In mempool"), inline: true},
-                {name: "Confirmations", value: (in_block > 0 ? `${best_height - in_block}` : "Not mined yet"), inline: true},
+                {name: "In Block", value: (in_block > 0 ? `${in_block}` : "Not mined yet"), inline: true},
+                {name: "Confirmations", value: (in_block > 0 ? `${(best_height - in_block)+1}` : "In mempool"), inline: true},
                 {name: "Fee", value: (`${parseInt(fee) / 10**8} ZEC`), inline: false},
             ])
             .addFields([
