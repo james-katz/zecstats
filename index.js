@@ -389,7 +389,72 @@ client.on('messageCreate', async (i) => {
             ]
         }]});
     }
+    else if(cmd[0].toLocaleLowerCase() == '!txinfo') {
+        const txid = cmd[1].toString();
+        if(!txid || txid == '') {
+            await i.reply("Please provide a transaction id.");
+            return;
+        }
 
+        axios.get(`https://api.3xpl.com/zcash/transaction/${txid}?data=transaction,events&limit=100&mixins=stats`, {
+            headers: {
+                'Authorization': 'Bearer 3A0_t3st3xplor3rpub11cb3t4efcd21748a5e'
+            }        
+        }).then(async (res) => {
+            const best_height = res.data.mixins.stats.zcash.best_block;
+            const in_block = res.data.data.transaction.block;
+            const events = res.data.data.events;
+            const voidAddr = events['zcash-main'].filter((t) => t.address == "the-void");
+            const fee = (voidAddr[0] ? voidAddr[0].effect : '0');
+            let inputs = [];
+            let outputs = [];
+
+            events['zcash-main'].forEach((t) => {
+                if(parseFloat(t.effect) < 0) inputs.push(`- **${t.address.startsWith('t1') ? 'transparent-pool' : t.address}**\n  - ${parseFloat(t.effect / 10**8).toFixed(8)} ZEC`)
+                else if(parseFloat(t.effect) >= 0 && t.address != "the-void") outputs.push(`- **${t.address.startsWith('t1') ? 'transparent-pool' : t.address}**\n  - ${parseFloat(t.effect / 10**8).toFixed(8)} ZEC`)
+            });
+
+            let trimInput = [];
+            if(inputs.length > 8) {
+                for(let i = 0; i < 8; i ++) {
+                    trimInput.push(inputs[i]);
+                }
+                trimInput[8] = `- **And ${inputs.length - 8} more ...**`;
+            }
+            else trimInput = inputs;
+
+            let trimOutput = [];
+            if(outputs.length > 8) {
+                for(let i = 0; i < 8; i ++) {
+                    trimOutput.push(outputs[i]);
+                }
+                trimOutput[8] = `- **And ${outputs.length - 8} more ...**`;
+            }
+            else trimOutput = outputs;
+
+            const txEmbed = new EmbedBuilder()
+            .setColor(0xf4b728)
+            .setAuthor({name: "Transaction details", iconURL: "https://bitzecbzc.github.io/wp-content/uploads/2019/03/zcash-icon-black.png"})
+            // .setTitle(`Transaction details`)
+            .setDescription(`Details for transaction id [${txid}](https://3xpl.com/zcash/transaction/${txid})`)
+            .setThumbnail("https://bitzecbzc.github.io/wp-content/uploads/2019/03/zcash-icon-fullcolor.png")
+            .addFields([
+                {name: "Block", value: (in_block > 0 ? `${in_block}` : "In mempool"), inline: true},
+                {name: "Confirmations", value: (in_block > 0 ? `${best_height - in_block}` : "Not mined yet"), inline: true},
+                {name: "Fee", value: (`${parseInt(fee) / 10**8} ZEC`), inline: false},
+            ])
+            .addFields([
+                {name: "Inputs", value: `${trimInput.join('\n')}`, inline: true},
+                {name: "Outputs", value: `${trimOutput.join('\n')}`, inline: true},
+            ])
+            .setTimestamp()
+            .setFooter({text: "Data provided by 3xpl.com", iconURL: "https://3xpl.com/assets/images/favicons/32.png"})
+
+            await i.reply({embeds: [txEmbed]});
+        }).catch(err => console.log(err));
+
+    }
+    
     else if(cmd[0].toLowerCase() == '$zpool' || cmd[0].toLowerCase() == '$zpools' || cmd[0].toLowerCase() == '$poolz') {
         await i.channel.sendTyping();
         let blockchainInfo;
