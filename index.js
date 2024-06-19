@@ -459,7 +459,7 @@ client.on('messageCreate', async (i) => {
         await i.channel.sendTyping();
         let blockchainInfo;
         try {
-            blockchainInfo = await axios.get('https://zcashblockexplorer.com/api/v1/blockchain-info');
+            blockchainInfo = await axios.get('http://185.62.57.21:4001/api/v1/blockchain-info');
         } catch(err) {
             interaction.editReply('ZcashBlockExplorer API is unavaiable.\n' + err);
             return;
