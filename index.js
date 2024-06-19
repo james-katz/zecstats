@@ -410,8 +410,8 @@ client.on('messageCreate', async (i) => {
             let outputs = [];
 
             events['zcash-main'].forEach((t) => {
-                if(parseFloat(t.effect) < 0) inputs.push(`- **${t.address.startsWith('t1') ? 'transparent-pool' : t.address}**\n  - ${parseFloat(t.effect / 10**8).toFixed(8)} ZEC`)
-                else if(parseFloat(t.effect) >= 0 && t.address != "the-void") outputs.push(`- **${t.address.startsWith('t1') ? 'transparent-pool' : t.address}**\n  - ${parseFloat(t.effect / 10**8).toFixed(8)} ZEC`)
+                if(parseFloat(t.effect) < 0) inputs.push(`- **${t.address.startsWith('t') ? 'transparent-pool' : t.address}**\n  - ${parseFloat(t.effect / 10**8).toFixed(8)} ZEC`)
+                else if(parseFloat(t.effect) >= 0 && t.address != "the-void") outputs.push(`- **${t.address.startsWith('t') ? 'transparent-pool' : t.address}**\n  - ${parseFloat(t.effect / 10**8).toFixed(8)} ZEC`)
             });
 
             let trimInput = [];
