@@ -1,0 +1,10 @@
+/home/thiago/Documentos/Workspace/Nodejs/zecstats/target/debug/deps/libpoly1305-3d1615e4d3727bea.rmeta: /home/thiago/.cargo/registry/src/index.crates.io-6f17d22bba15001f/poly1305-0.8.0/src/lib.rs /home/thiago/.cargo/registry/src/index.crates.io-6f17d22bba15001f/poly1305-0.8.0/src/backend.rs /home/thiago/.cargo/registry/src/index.crates.io-6f17d22bba15001f/poly1305-0.8.0/src/backend/avx2.rs /home/thiago/.cargo/registry/src/index.crates.io-6f17d22bba15001f/poly1305-0.8.0/src/backend/avx2/helpers.rs /home/thiago/.cargo/registry/src/index.crates.io-6f17d22bba15001f/poly1305-0.8.0/src/backend/autodetect.rs /home/thiago/.cargo/registry/src/index.crates.io-6f17d22bba15001f/poly1305-0.8.0/src/backend/soft.rs
+
+/home/thiago/Documentos/Workspace/Nodejs/zecstats/target/debug/deps/poly1305-3d1615e4d3727bea.d: /home/thiago/.cargo/registry/src/index.crates.io-6f17d22bba15001f/poly1305-0.8.0/src/lib.rs /home/thiago/.cargo/registry/src/index.crates.io-6f17d22bba15001f/poly1305-0.8.0/src/backend.rs /home/thiago/.cargo/registry/src/index.crates.io-6f17d22bba15001f/poly1305-0.8.0/src/backend/avx2.rs /home/thiago/.cargo/registry/src/index.crates.io-6f17d22bba15001f/poly1305-0.8.0/src/backend/avx2/helpers.rs /home/thiago/.cargo/registry/src/index.crates.io-6f17d22bba15001f/poly1305-0.8.0/src/backend/autodetect.rs /home/thiago/.cargo/registry/src/index.crates.io-6f17d22bba15001f/poly1305-0.8.0/src/backend/soft.rs
+
+/home/thiago/.cargo/registry/src/index.crates.io-6f17d22bba15001f/poly1305-0.8.0/src/lib.rs:
+/home/thiago/.cargo/registry/src/index.crates.io-6f17d22bba15001f/poly1305-0.8.0/src/backend.rs:
+/home/thiago/.cargo/registry/src/index.crates.io-6f17d22bba15001f/poly1305-0.8.0/src/backend/avx2.rs:
+/home/thiago/.cargo/registry/src/index.crates.io-6f17d22bba15001f/poly1305-0.8.0/src/backend/avx2/helpers.rs:
+/home/thiago/.cargo/registry/src/index.crates.io-6f17d22bba15001f/poly1305-0.8.0/src/backend/autodetect.rs:
+/home/thiago/.cargo/registry/src/index.crates.io-6f17d22bba15001f/poly1305-0.8.0/src/backend/soft.rs:

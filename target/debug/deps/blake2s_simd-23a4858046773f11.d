@@ -1,0 +1,11 @@
+/home/thiago/Documentos/Workspace/Nodejs/zecstats/target/debug/deps/libblake2s_simd-23a4858046773f11.rmeta: /home/thiago/.cargo/registry/src/index.crates.io-6f17d22bba15001f/blake2s_simd-1.0.2/src/lib.rs /home/thiago/.cargo/registry/src/index.crates.io-6f17d22bba15001f/blake2s_simd-1.0.2/src/avx2.rs /home/thiago/.cargo/registry/src/index.crates.io-6f17d22bba15001f/blake2s_simd-1.0.2/src/portable.rs /home/thiago/.cargo/registry/src/index.crates.io-6f17d22bba15001f/blake2s_simd-1.0.2/src/sse41.rs /home/thiago/.cargo/registry/src/index.crates.io-6f17d22bba15001f/blake2s_simd-1.0.2/src/blake2sp.rs /home/thiago/.cargo/registry/src/index.crates.io-6f17d22bba15001f/blake2s_simd-1.0.2/src/guts.rs /home/thiago/.cargo/registry/src/index.crates.io-6f17d22bba15001f/blake2s_simd-1.0.2/src/many.rs
+
+/home/thiago/Documentos/Workspace/Nodejs/zecstats/target/debug/deps/blake2s_simd-23a4858046773f11.d: /home/thiago/.cargo/registry/src/index.crates.io-6f17d22bba15001f/blake2s_simd-1.0.2/src/lib.rs /home/thiago/.cargo/registry/src/index.crates.io-6f17d22bba15001f/blake2s_simd-1.0.2/src/avx2.rs /home/thiago/.cargo/registry/src/index.crates.io-6f17d22bba15001f/blake2s_simd-1.0.2/src/portable.rs /home/thiago/.cargo/registry/src/index.crates.io-6f17d22bba15001f/blake2s_simd-1.0.2/src/sse41.rs /home/thiago/.cargo/registry/src/index.crates.io-6f17d22bba15001f/blake2s_simd-1.0.2/src/blake2sp.rs /home/thiago/.cargo/registry/src/index.crates.io-6f17d22bba15001f/blake2s_simd-1.0.2/src/guts.rs /home/thiago/.cargo/registry/src/index.crates.io-6f17d22bba15001f/blake2s_simd-1.0.2/src/many.rs
+
+/home/thiago/.cargo/registry/src/index.crates.io-6f17d22bba15001f/blake2s_simd-1.0.2/src/lib.rs:
+/home/thiago/.cargo/registry/src/index.crates.io-6f17d22bba15001f/blake2s_simd-1.0.2/src/avx2.rs:
+/home/thiago/.cargo/registry/src/index.crates.io-6f17d22bba15001f/blake2s_simd-1.0.2/src/portable.rs:
+/home/thiago/.cargo/registry/src/index.crates.io-6f17d22bba15001f/blake2s_simd-1.0.2/src/sse41.rs:
+/home/thiago/.cargo/registry/src/index.crates.io-6f17d22bba15001f/blake2s_simd-1.0.2/src/blake2sp.rs:
+/home/thiago/.cargo/registry/src/index.crates.io-6f17d22bba15001f/blake2s_simd-1.0.2/src/guts.rs:
+/home/thiago/.cargo/registry/src/index.crates.io-6f17d22bba15001f/blake2s_simd-1.0.2/src/many.rs:

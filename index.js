@@ -1,8 +1,23 @@
-const { Client, GatewayIntentBits, ModalSubmitInteraction, EmbedBuilder, AttachmentBuilder } = require('discord.js');
+const { Client, GatewayIntentBits, ModalSubmitInteraction, EmbedBuilder, AttachmentBuilder, enableValidators, CommandInteractionOptionResolver, Utils } = require('discord.js');
 const CoinGecko = require('coingecko-api');
 const axios = require('axios');
 
+const native = require('./index.node');
+const grpc = require('./grpc_connector');
+const lc = grpc.init('zec.rocks:443');   //na-ewr.
+
+const sequelize = require('./sequelize');
+const { Op } = require('sequelize');
+
+const SAPLING_ACTIVATION = 419200;
+const ORCHARD_ACTIVATION = 1687104;
+const SYNC_PERIOD = 1152; // 1152 is roughly a day
+
+let txSummaryLock = false;
+let dbSyncLock = false;
+
 const { ChartJSNodeCanvas } = require('chartjs-node-canvas');
+const ChartDataLabels = require('chartjs-plugin-datalabels');
 
 const { v4: uuidv4 } = require('uuid');
 
@@ -22,8 +37,18 @@ const client = new Client({
 });
 console.log("Booting...");
 
-client.once('ready', () => {
-    console.log("Ready!");    
+client.once('ready', async () => {
+    console.log("Ready!");
+    // Assert database connection
+    console.log(`Checking database connection...`);
+	try {
+		await sequelize.authenticate();
+        // If connection is Ok, do initial database sync
+        initDb();
+	} catch (error) {
+		console.log('Unable to connect to the database:', error.message);
+		process.exit(1);
+	}
 });
 
 const languages = {
@@ -479,7 +504,717 @@ client.on('messageCreate', async (i) => {
             footer: {text: 'Data provided by ZcashBlockExplorer API'},
             timestamp: new Date()
         }]});
-
     }
-})
+    else if(cmd[0].toLocaleLowerCase() == '$zrange') {
+        if(txSummaryLock) {
+            await i.reply('Hold on until I finish a previous call to this command!');
+            return;
+        }        
+
+        const latestBlock = await grpc.getLatestBlock(lc);        
+        
+        let start = parseInt(latestBlock.height);
+        const end = parseInt(latestBlock.height);
+
+        if(isNaN(cmd[1])) {
+            // await i.reply('Please inform a valid range');
+            // return;
+            start = parseInt(latestBlock.height - 1152)
+        } else {
+            start = parseInt(latestBlock.height - parseInt(cmd[1]));
+        }        
+
+        if(end - start > SYNC_PERIOD*4) {
+            await i.reply(`Range too large, please try again with a smaller range. ${SYNC_PERIOD*4} blocks or less`);
+            return;
+        }
+
+        txSummaryLock = true;
+        const data = await syncTransactions(start, end, false);
+        const dataChart = {
+            sapling: data.sapling,
+            orchard: data.orchard,
+            start: start,
+            end: end
+        }
+                
+        const [chart, uuid] = await createShieldedChart(dataChart);
+
+        const attach = new AttachmentBuilder(chart, {name: uuid+'.png'});
+
+        txSummaryLock = false;
+
+        // return;
+        const zcashEmbed = new EmbedBuilder()
+            .setTitle('<:zcash:1060629265961472080> Shielded Transaction Info')
+            .setColor(0xf4b728)
+            // .setDescription()
+            .setImage('attachment://'+uuid+'.png')
+
+        await i.channel.send({embeds: [zcashEmbed], files: [attach]})
+    }
+
+    else if(cmd[0].toLocaleLowerCase() == '$z') {
+        if(txSummaryLock || dbSyncLock) {
+            await i.reply('Already processing or database not synched yet.');
+            return;
+        }        
+
+        // if(isNaN(cmd[1]) || isNaN(cmd[2])) {
+        //     await i.reply('Please inform a valid range');
+        //     return;
+        // }                 
+
+        // const start = parseInt(cmd[1]);
+        // const end = parseInt(cmd[2]);
+
+        // if(end - start > SYNC_PERIOD*4) {
+        //     await i.reply(`Range too large, please try again with a smaller range. ${SYNC_PERIOD*4} blocks or less`);
+        //     return;
+        // }
+
+        let filter = false;
+        if(cmd[1] && cmd[1].toLowerCase() == 'filter') filter = true;
+
+        txSummaryLock = true;
+        
+        const dataChart = {
+            sapling: [],
+            orchard: []
+        }
+        let totalTx = 0;
+        let saplingTx = 0;
+        let saplingTxFilter = 0;
+        let orchardTx = 0;
+        let orchardTxFilter = 0;
+
+        const privacySetModel = sequelize.models.privacyset;
+        try {
+            const allTx = await privacySetModel.findAll({
+                where: {
+                    height:{
+                        [Op.lte]: 2619266
+                    }
+                }
+            });
+            if(allTx) {
+                
+                totalTx = allTx.reduce((acc, curr) => curr.dataValues.transactions + acc, 0);
+                                
+                allTx.forEach((entry) => {
+                    saplingTx += entry.sapling;
+                    saplingTxFilter += entry.sapling_filter;
+                    orchardTx += entry.orchard;
+                    orchardTxFilter += entry.orchard_filter;
+                    if(entry.height % (SYNC_PERIOD * 90) == 0) {
+                        dataChart.sapling.push({
+                            height: entry.height,
+                            sum: saplingTx,
+                            sum_filter: saplingTxFilter
+                        });
+                        
+                        dataChart.orchard.push({
+                            height: entry.height,
+                            sum: orchardTx,
+                            sum_filter: orchardTxFilter
+                        });
+                    }
+                });                
+            }
+        } catch(e) {
+            console.log(e);
+        }
+        
+        const [chart, uuid] = await createShieldedAreaChart(dataChart, filter);
+
+        const attach = new AttachmentBuilder(chart, {name: uuid+'.png'});
+
+        txSummaryLock = false;
+
+        // return;
+        const zcashEmbed = new EmbedBuilder()
+            .setTitle('<:zcash:1060629265961472080> Shielded Transaction Info')
+            .setColor(0xf4b728)
+            .addFields([
+                {name: "Total number of transactions", value: `${totalTx}`, inline: false},                
+            ])
+            .addFields([
+                {name: "Sapling transactions", value: `${saplingTx}`, inline: false},                
+                {name: "Sapling transactions (filtered)", value: `${saplingTxFilter}`, inline: true},                
+            ])
+            .addFields([
+                {name: "Orchard transactions", value: `${orchardTx}`, inline: false},                
+                {name: "Orchard transactions (filtered)", value: `${orchardTxFilter}`, inline: true},                
+            ])
+            // .setDescription()
+            .setImage('attachment://'+uuid+'.png')
+
+        await i.channel.send({embeds: [zcashEmbed], files: [attach]})
+    }
+
+    else if(cmd[0].toLocaleLowerCase() == '$zummary') {
+        if(txSummaryLock || dbSyncLock) {
+            await i.reply('Already processing or database not synched yet.');
+            return;
+        }        
+
+        // if(isNaN(cmd[1]) || isNaN(cmd[2])) {
+        //     await i.reply('Please inform a valid range');
+        //     return;
+        // }                 
+
+        // const start = parseInt(cmd[1]);
+        // const end = parseInt(cmd[2]);
+
+        // if(end - start > SYNC_PERIOD*4) {
+        //     await i.reply(`Range too large, please try again with a smaller range. ${SYNC_PERIOD*4} blocks or less`);
+        //     return;
+        // }
+
+        let filter = false;
+        if(cmd[1] && cmd[1].toLowerCase() == 'filter') filter = true;
+
+        txSummaryLock = true;
+        
+        const dataChart = {
+            sapling: [],
+            orchard: []
+        }
+        let totalTx = 0;
+        let saplingTx = 0;
+        let saplingTxFilter = 0;
+        let orchardTx = 0;
+        let orchardTxFilter = 0;
+
+        const privacySetModel = sequelize.models.privacyset;
+        try {
+            const allTx = await privacySetModel.findAll();
+            if(allTx) {
+                
+                totalTx = allTx.reduce((acc, curr) => curr.dataValues.transactions + acc, 0);
+                                
+                allTx.forEach((entry) => {
+                    saplingTx += entry.sapling;
+                    saplingTxFilter += entry.sapling_filter;
+                    orchardTx += entry.orchard;
+                    orchardTxFilter += entry.orchard_filter;
+                    if(entry.height % (SYNC_PERIOD * 90) == 0) {
+                        dataChart.sapling.push({
+                            height: entry.height,
+                            sum: saplingTx,
+                            sum_filter: saplingTx - saplingTxFilter
+                        });
+                        
+                        dataChart.orchard.push({
+                            height: entry.height,
+                            sum: orchardTx,
+                            sum_filter: orchardTx - orchardTxFilter
+                        });
+
+                    saplingTx = 0;
+                    saplingTxFilter = 0;
+                    orchardTx = 0;
+                    orchardTxFilter = 0;
+                    }
+                });                
+            }
+        } catch(e) {
+            console.log(e);
+        }
+        
+        const [chart, uuid] = await createShieldedBarChart(dataChart, filter);
+
+        const attach = new AttachmentBuilder(chart, {name: uuid+'.png'});
+
+        txSummaryLock = false;
+
+        // return;
+        const zcashEmbed = new EmbedBuilder()
+            .setTitle('<:zcash:1060629265961472080> Shielded Transaction Info')
+            .setColor(0xf4b728)
+            // .addFields([
+            //     {name: "Total number of transactions", value: `${totalTx}`, inline: false},                
+            // ])
+            // .addFields([
+            //     {name: "Sapling transactions", value: `${saplingTx}`, inline: false},                
+            //     {name: "Sapling transactions (filtered)", value: `${saplingTxFilter}`, inline: true},                
+            // ])
+            // .addFields([
+            //     {name: "Orchard transactions", value: `${orchardTx}`, inline: false},                
+            //     {name: "Orchard transactions (filtered)", value: `${orchardTxFilter}`, inline: true},                
+            // ])
+            // .setDescription()
+            .setImage('attachment://'+uuid+'.png')
+
+        await i.channel.send({embeds: [zcashEmbed], files: [attach]})
+    }
+});
+
+// async function getTransactionInfo(txid) {    
+//     const rawTx = await grpc.getTransaction(lc, txid);
+//     const txData = native.getTransactionData(Buffer.from(rawTx.data, 'hex').toString('hex'));
+//     const txJson = JSON.parse(txData);
+// }
+
+async function createShieldedChart(dataC) {
+    console.log(dataC)
+    const data = {
+        labels: ['Sapling', 'Orchard'],
+        datasets: [
+          {
+            label: 'Shielded Transactions',
+            data: [dataC.sapling, dataC.orchard],
+            backgroundColor: ['#00640a', '#5970ad'],
+          }
+        ]
+      };
+    
+    const config = {
+        type: 'doughnut',
+        data: data,
+        options: {
+            responsive: true,
+            plugins: {
+                legend: {
+                    position: 'top',
+                },
+            
+                title: {
+                    display: true,
+                    text: 'Shielded Transactions'
+                },     
+                subtitle: {
+                    display: true,
+                    text: `From block ${dataC.start} to ${dataC.end}`
+                },
+                datalabels: {
+                    color: '#fff',  // Text color
+                    anchor: 'center',  // Position inside the doughnut segment
+                    align: 'center',  // Center the text
+                    formatter: (value, ctx) => {
+                        let sum = ctx.dataset.data.reduce((a, b) => a + b, 0);
+                        let percentage = (value * 100 / sum).toFixed(2) + "%";
+                        return `${value}\n(${percentage})`;  // Display both value and percentage
+                    },
+                    font: {
+                        weight: 'bold',
+                        size: 16
+                    }
+                }                  
+            }
+        },
+        plugins: [ChartDataLabels]
+
+    };
+    
+    const buffer = await chartJSNodeCanvas.renderToBuffer(config);
+    const uuid = uuidv4();
+    return [buffer, uuid];
+}
+
+async function createShieldedAreaChart(dataC, filter) {
+    // console.log(dataC)
+    const mSapling = dataC.sapling.map(el => {
+        let m = {};
+        m.x = `${el.height}`,
+        m.y = el.sum;
+        return m
+    });
+    const mOrchard = dataC.orchard.map(el => {
+        let m = {};
+        m.x = `${el.height}`,
+        m.y = el.sum > 0 ? el.sum : null;
+        return m
+    });
+    const mSaplingF = dataC.sapling.map(el => {
+        let m = {};
+        m.x = `${el.height}`,
+        m.y = el.sum_filter;
+        return m
+    });
+    const mOrchardF = dataC.orchard.map(el => {
+        
+        let m = {};
+        m.x = `${el.height}`,
+        m.y = el.sum_filter > 0 ? el.sum_filter : null;;
+        return m
+    });
+
+    const sets = [];
+    if(filter) {
+        sets.push({
+            label: 'Orchard transactions (Spam filtered)',
+            data: mOrchardF,
+            borderColor: '#9fd3e9',
+            backgroundColor: '#9fd3e9aa',
+            fill: 'start', 
+            pointRadius: 1,
+            borderWidth: 2
+        })
+    }
+    sets.push({
+        label: 'Orchard transactions',
+        data: mOrchard,
+        borderColor: '#5970ad',
+        backgroundColor: '#5970adaa',
+        fill: 'start',
+        pointRadius: 1,
+        borderWidth: 2
+    });
+
+    if(filter) {
+        sets.push({
+            label: 'Sapling transactions (Spam filtered)',
+            data: mSaplingF,
+            borderColor: '#12826c',
+            backgroundColor: '#12826caa',
+            fill: 'start',
+            pointRadius: 1,
+            borderWidth: 2
+        });
+    }
+
+    sets.push({
+        label: 'Sapling transactions',
+        data: mSapling,
+        borderColor: '#00640a',
+        backgroundColor: '#00640aaa',
+        fill: 'start',
+        pointRadius: 1,
+        borderWidth: 2
+    });
+    
+    const data = {
+        labels: mSapling.x,
+        datasets: sets
+    }
+    
+    const chartConfig = {
+        type: 'line',
+        data: data,
+        options: {
+            plugins: {
+            filler: {
+                propagate: false,
+            },
+            title: {
+                display: true,
+                text: 'Zcash Shielded Transactions'
+            }
+            },
+            interaction: {
+                intersect: false,
+            }
+        }
+    }
+    const buffer = await chartJSNodeCanvas.renderToBuffer(chartConfig);
+    const uuid = uuidv4();
+    return [buffer, uuid];
+}
+
+async function createShieldedBarChart(dataC, filter) {
+    // console.log(dataC)
+    const mSapling = dataC.sapling.map(el => {
+        let m = {};
+        m.x = `${el.height}`,
+        m.y = el.sum;
+        return m
+    });
+    const mOrchard = dataC.orchard.map(el => {
+        let m = {};
+        m.x = `${el.height}`,
+        m.y = el.sum > 0 ? el.sum : null;
+        return m
+    });
+    const mSaplingF = dataC.sapling.map(el => {
+        let m = {};
+        m.x = `${el.height}`,
+        m.y = el.sum_filter;
+        return m
+    });
+    const mOrchardF = dataC.orchard.map(el => {
+        
+        let m = {};
+        m.x = `${el.height}`,
+        m.y = el.sum_filter > 0 ? el.sum_filter : null;;
+        return m
+    });
+
+    const sets = [];
+    if(filter) {
+        sets.push({
+            label: 'Orchard transactions (Spam filtered)',
+            data: mOrchardF,
+            borderColor: '#9fd3e9',
+            backgroundColor: '#9fd3e9aa',
+            fill: 'start', 
+            pointRadius: 1,
+            borderWidth: 2
+        })
+    }
+    sets.push({
+        label: 'Orchard transactions',
+        data: mOrchard,
+        borderColor: '#5970ad',
+        backgroundColor: '#5970adaa',
+        fill: 'start',
+        pointRadius: 1,
+        borderWidth: 2
+    });
+
+    if(filter) {
+        sets.push({
+            label: 'Sapling transactions (Spam filtered)',
+            data: mSaplingF,
+            borderColor: '#12826c',
+            backgroundColor: '#12826caa',
+            fill: 'start',
+            pointRadius: 1,
+            borderWidth: 2
+        });
+    }
+
+    sets.push({
+        label: 'Sapling transactions',
+        data: mSapling,
+        borderColor: '#00640a',
+        backgroundColor: '#00640aaa',
+        fill: 'start',
+        pointRadius: 1,
+        borderWidth: 2
+    });
+    
+    const data = {
+        labels: mSapling.x,
+        datasets: sets
+    }
+    
+    const chartConfig = {
+        type: 'bar',
+        data: data,
+        options: {
+            plugins: {
+            filler: {
+                propagate: false,
+            },
+            title: {
+                display: true,
+                text: 'Zcash Shielded Transactions'
+            }
+            },
+            interaction: {
+                intersect: false,
+            },
+            scales: {
+                x: {
+                  stacked: true,
+                },
+                y: {
+                  stacked: true
+                }
+            }
+        }
+    }
+    const buffer = await chartJSNodeCanvas.renderToBuffer(chartConfig);
+    const uuid = uuidv4();
+    return [buffer, uuid];
+}
+
+async function initDb() {    
+    const latestBlock = await grpc.getLatestBlock(lc);
+    // const latestBlock = {height: 1155040};    
+
+    // Get latest synched height from db
+    const privacySetModel = sequelize.models.privacyset;
+    try {
+        const dbHeight = await privacySetModel.findOne({
+            order: [['height', 'DESC']] // Order by height in descending order
+        });
+
+        if (dbHeight) {
+            const lastDbHeight = dbHeight.dataValues.height;
+      
+            if(latestBlock.height - lastDbHeight > SYNC_PERIOD) {                
+                // Skip 1 block to avoid double processing previously synched block
+                syncTransactions(lastDbHeight + 1, latestBlock.height, true);
+            }
+            else {
+                console.log('Database is up to date');
+            }
+        } else {
+            console.log('No transactions found. Synching from SAPLING_ACTIVATION');
+            syncTransactions(SAPLING_ACTIVATION, latestBlock.height, true);
+        }
+    } catch (error) {
+        console.error('Error finding latest transaction:', error);
+    }
+
+    // Register a interval to fetch new transactions
+    setInterval(async() => {
+        if(dbSyncLock) {
+            return;
+        }
+
+        const privacySetModel = sequelize.models.privacyset;
+        const latestBlock = await grpc.getLatestBlock(lc);        
+        try {
+            const dbHeight = await privacySetModel.findOne({
+                order: [['height', 'DESC']] // Order by height in descending order
+            });
+
+            const lastDbHeight = dbHeight.dataValues.height;
+
+            if(latestBlock.height - lastDbHeight > SYNC_PERIOD) {                
+                console.log("Updating database");
+                syncTransactions(lastDbHeight, latestBlock.height, true);
+            }
+            else {
+                console.log("No need to update db yet ...");
+            }
+        } catch(e) {
+            console.log(e);
+        }
+
+
+    }, 60 * 60 * 1000);
+}
+
+async function syncTransactions(start, end, writeDb) {        
+    dbSyncLock = true;
+    
+    let startHeight = start;
+    const endHeight = end;
+  
+    let blocksProcessed = 0;
+    // let actionsProcessed = 0;
+    // let spendsProcessed = 0;
+    // let outputsProcessed = 0;
+    let txProcessed = 0;
+    let txProcessedFilter = 0;
+    let saplingTx = 0;
+    let orchardTx = 0;
+    let saplingTxFilter = 0;
+    let orchardTxFilter = 0;
+
+    spamFilterLimit = 50;
+    const batchSize = 1000;
+    let latestSynced = startHeight;
+
+    const privacySetModel = sequelize.models.privacyset;
+    // if(writeDb) {                
+    //     // Set values to previous recorded values (cummulative)
+    //     try{
+    //         const dbHeight = await privacySetModel.findOne({
+    //             where: {'height': startHeight}
+    //         });
+
+    //         txProcessed = dbHeight.dataValues.transactions;
+    //         txProcessedFilter = dbHeight.dataValues.transactions_filter;
+    //         saplingTx = dbHeight.dataValues.sapling;
+    //         orchardTx = dbHeight.dataValues.orchard;
+    //         saplingTxFilter = dbHeight.dataValues.sapling_filter;
+    //         orchardTxFilter = dbHeight.dataValues.orchard_filter;
+    //     } catch(e) {
+    //         console.log(e);
+    //     }
+    //     // And skip 1 block
+    //     latestSynced += 1;
+    // }
+    
+    console.log(`Downloading blocks. start: ${startHeight}, end: ${endHeight}. Batch Size: ${batchSize}`);
+    
+    while(latestSynced < endHeight) {
+        const chunk = Math.min(latestSynced + batchSize, endHeight);
+        try {
+            const blocks = await grpc.getBlockRange(latestSynced, chunk);                
+            
+            for(const block of blocks) {                          
+                for(const vtx of block.vtx) {                                                    
+                    let isSpam = false;
+                    let txCount = 0;
+                    if(vtx.actions.length > spamFilterLimit || vtx.outputs.length > spamFilterLimit) {
+                        // console.log(`Transaction is spam ...`);
+                        isSpam = true;
+                    } 
+
+                    if(block.height >= ORCHARD_ACTIVATION) {
+                        if(vtx.actions.length > 0) {
+                            // actionsProcessed += vtx.actions.length;
+                            orchardTx += 1;
+                            if(!isSpam) orchardTxFilter += 1;
+                            txCount += 0.5;
+                        }
+                    }
+
+                    if(vtx.outputs.length > 0) {
+                        // outputsProcessed += vtx.outputs.length;                            
+                        saplingTx += 1
+                        if(!isSpam) saplingTxFilter += 1;
+                        txCount += 0.5;
+                    }
+                    
+                    // spendsProcessed += vtx.spends.length;         
+
+                    txProcessed += Math.ceil(txCount);
+                    if(!isSpam) txProcessedFilter += Math.ceil(txCount);                   
+                }
+
+                // Save sum of transactions to database
+                if(block.height % SYNC_PERIOD == 0 && writeDb) {
+                    console.log(`Daily report tx total ${txProcessed} transactions\n`)
+                    try {                        
+                        await privacySetModel.create({
+                            height: block.height,
+                            sapling: saplingTx,
+                            sapling_filter: saplingTxFilter,
+                            orchard: orchardTx,
+                            orchard_filter: orchardTxFilter,
+                            transactions: txProcessed,
+                            transactions_filter: txProcessedFilter
+                        });
+                    } catch(e) {
+                        console.log(e)
+                    }     
+                    txProcessed = 0;
+                    txProcessedFilter = 0;
+                    saplingTx = 0;
+                    orchardTx = 0;
+                    saplingTxFilter = 0;
+                    orchardTxFilter = 0;           
+                }
+            }
+
+            blocksProcessed += blocks.length;
+            latestSynced = chunk + 1;
+        }
+        catch(e) {
+            console.log(e);
+            throw(e);
+        }                   
+    }  
+
+    dbSyncLock = false;
+
+    console.log(`Processed a total of ${blocksProcessed} blocks`); 
+    // console.log(`Total transactions processed: ${txProcessed}\n` +
+            // `Total filtered transactions processed: ${txProcessedFilter}\n` +
+            // `Total sapling transactions processed: ${saplingTx}\n` +
+            // `Total orchard transactions processed: ${orchardTx}\n` +
+            // `Total filtered sapling transactions processed: ${saplingTxFilter}\n` +
+            // `Total filtered orchard transactions processed: ${orchardTxFilter}\n`
+            // `Total orchard actions processed: ${actionsProcessed}\n` +
+            // `Total sapling spends processed: ${spendsProcessed}\n` +
+            // `Total sapling outputs processed: ${outputsProcessed}`);
+    // );
+
+    return {
+        sapling: saplingTx,
+        sapling_filter: saplingTxFilter,
+        orchard: orchardTx,
+        orchard_filter: orchardTxFilter,
+        transactions: txProcessed,
+        transactions_filter: txProcessedFilter
+    }
+}
+
 client.login(process.env.DISCORD_TOKEN);
