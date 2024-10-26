@@ -16,6 +16,10 @@ const SYNC_PERIOD = 1152; // 1152 is roughly a day
 let txSummaryLock = false;
 let dbSyncLock = false;
 
+let halvingTimer;
+let halvingTimerLock = false;
+let channel, channelId;
+
 const { ChartJSNodeCanvas } = require('chartjs-node-canvas');
 const ChartDataLabels = require('chartjs-plugin-datalabels');
 
@@ -352,7 +356,73 @@ async function fetchCoinGECKO() {
 client.on('messageCreate', async (i) => {
     if(i.author.bot) return;
     const cmd = i.content.split(' ');
-    
+
+    if(cmd[0].toLowerCase() == "^halving") {
+        if(cmd[1] && i.author.id == "290336959627395072") {            
+            channelId = cmd[1];
+            channel = await i.guild.channels.fetch(channelId);
+            if(channel) {
+                await i.reply(`Halving countdown configured at <#${channelId}>`);
+            }
+            else {
+                await i.reply(`Invalid channel <#${channelId}>`);
+                return;
+            }
+
+            halvingTimer = setInterval(async () => {               
+                if(halvingTimerLock) {
+                    console.log('not done yet, shit')
+                    return;
+                }
+                try {      
+                    halvingTimerLock = true;
+                    const res = await axios.get('http://13.58.71.62:3001/', {
+                        timeout: 5000 // Timeout of 5 seconds
+                    });
+
+                    if(res && res.status == 200) {
+                        const days = String(res.data.countdown.days);
+                        const hours = String(res.data.countdown.hours);
+                        const mins = String(res.data.countdown.mins).padStart(2, '0');
+                        const secs = String(res.data.countdown.secs).padStart(2, '0');
+
+                        const channelName = `📅 ${days} Days, ${hours}h, ${mins}m, ${secs}s`
+                        // const halvDate = new Date(res.data.halving_date);
+                        // const channelName = `📅 ${halvDate.toLocaleDateString()} ${halvDate.toLocaleTimeString()}`
+                        // console.log(`${channelName}`)                        
+                       
+                        const lChannel = await i.guild.channels.fetch(channelId);                         
+                        // console.log(lChannel.name)
+
+                        lChannel.edit({name: `${channelName}`}).then((c) => {
+                            console.log(c.name);
+                            halvingTimerLock = false;
+                        }).catch((e) => {console.log(e)});
+
+                        setTimeout(() => {
+                            halvingTimerLock = false;
+                        }, 3 * 60 * 1000);
+
+                        // const lChannel2 = await i.guild.channels.fetch(channelId); 
+                        // console.log(lChannel2.name)
+                    }
+                    else {
+                        console.log("No response from server");
+                        halvingTimerLock = false;
+                    }
+                }
+                catch(e) {
+                    halvingTimerLock = false;
+
+                    console.log(e);
+                }                
+            }, 75 * 1000)                        
+        }
+        else {
+            await i.reply(`You don't have permission for this.`);
+        }
+    }
+
     if(cmd[0].toLowerCase() == '$zconvert' || cmd[0].toLowerCase() == '$zconv') {
         const validFiat = await CoinGeckoClient.simple.supportedVsCurrencies();
         let amountZec = parseFloat(cmd[1].replace(/,/g,'.'));
@@ -513,21 +583,26 @@ client.on('messageCreate', async (i) => {
 
         const latestBlock = await grpc.getLatestBlock(lc);        
         
-        let start = parseInt(latestBlock.height);
-        const end = parseInt(latestBlock.height);
+        let start = parseInt(latestBlock.height) - 1152;
+        let end = parseInt(latestBlock.height);
+      
 
-        if(isNaN(cmd[1])) {
-            // await i.reply('Please inform a valid range');
-            // return;
-            start = parseInt(latestBlock.height - 1152)
-        } else {
-            start = parseInt(latestBlock.height - parseInt(cmd[1]));
-        }        
-
-        if(end - start > SYNC_PERIOD*4) {
-            await i.reply(`Range too large, please try again with a smaller range. ${SYNC_PERIOD*4} blocks or less`);
-            return;
+        // if(isNaN(cmd[1])) {
+        //     // await i.reply('Please inform a valid range');
+        //     // return;
+        //     start = parseInt(latestBlock.height - 1152)
+        // } else {
+        //     start = parseInt(latestBlock.height - parseInt(cmd[1]));
+        // }  
+        if(cmd[1])       {
+            start=2490000;
+            end=2550000;
         }
+
+        // if(end - start > SYNC_PERIOD*4) {
+        //     await i.reply(`Range too large, please try again with a smaller range. ${SYNC_PERIOD*4} blocks or less`);
+        //     return;
+        // }
 
         txSummaryLock = true;
         const data = await syncTransactions(start, end, false);
@@ -1086,9 +1161,9 @@ async function syncTransactions(start, end, writeDb) {
     const endHeight = end;
   
     let blocksProcessed = 0;
-    // let actionsProcessed = 0;
-    // let spendsProcessed = 0;
-    // let outputsProcessed = 0;
+    let actionsProcessed = 0;
+    let spendsProcessed = 0;
+    let outputsProcessed = 0;
     let txProcessed = 0;
     let txProcessedFilter = 0;
     let saplingTx = 0;
@@ -1097,7 +1172,7 @@ async function syncTransactions(start, end, writeDb) {
     let orchardTxFilter = 0;
 
     spamFilterLimit = 50;
-    const batchSize = 1000;
+    const batchSize = 2000;
     let latestSynced = startHeight;
 
     const privacySetModel = sequelize.models.privacyset;
@@ -1123,7 +1198,7 @@ async function syncTransactions(start, end, writeDb) {
     
     console.log(`Downloading blocks. start: ${startHeight}, end: ${endHeight}. Batch Size: ${batchSize}`);
     
-    while(latestSynced < endHeight) {
+    while(latestSynced <= endHeight) {
         const chunk = Math.min(latestSynced + batchSize, endHeight);
         try {
             const blocks = await grpc.getBlockRange(latestSynced, chunk);                
@@ -1139,21 +1214,21 @@ async function syncTransactions(start, end, writeDb) {
 
                     if(block.height >= ORCHARD_ACTIVATION) {
                         if(vtx.actions.length > 0) {
-                            // actionsProcessed += vtx.actions.length;
+                            actionsProcessed += vtx.actions.length;
                             orchardTx += 1;
                             if(!isSpam) orchardTxFilter += 1;
                             txCount += 0.5;
                         }
                     }
 
-                    if(vtx.outputs.length > 0) {
-                        // outputsProcessed += vtx.outputs.length;                            
+                    if(vtx.outputs.length > 0 || vtx.spends.length > 0) {
+                        outputsProcessed += vtx.outputs.length;                            
                         saplingTx += 1
                         if(!isSpam) saplingTxFilter += 1;
                         txCount += 0.5;
                     }
                     
-                    // spendsProcessed += vtx.spends.length;         
+                    spendsProcessed += vtx.spends.length;         
 
                     txProcessed += Math.ceil(txCount);
                     if(!isSpam) txProcessedFilter += Math.ceil(txCount);                   
@@ -1161,7 +1236,7 @@ async function syncTransactions(start, end, writeDb) {
 
                 // Save sum of transactions to database
                 if(block.height % SYNC_PERIOD == 0 && writeDb) {
-                    console.log(`Daily report tx total ${txProcessed} transactions\n`)
+                    // console.log(`Daily report tx total ${txProcessed} transactions\n`)
                     try {                        
                         await privacySetModel.create({
                             height: block.height,
@@ -1196,15 +1271,16 @@ async function syncTransactions(start, end, writeDb) {
     dbSyncLock = false;
 
     console.log(`Processed a total of ${blocksProcessed} blocks`); 
-    // console.log(`Total transactions processed: ${txProcessed}\n` +
-            // `Total filtered transactions processed: ${txProcessedFilter}\n` +
-            // `Total sapling transactions processed: ${saplingTx}\n` +
-            // `Total orchard transactions processed: ${orchardTx}\n` +
-            // `Total filtered sapling transactions processed: ${saplingTxFilter}\n` +
-            // `Total filtered orchard transactions processed: ${orchardTxFilter}\n`
-            // `Total orchard actions processed: ${actionsProcessed}\n` +
-            // `Total sapling spends processed: ${spendsProcessed}\n` +
-            // `Total sapling outputs processed: ${outputsProcessed}`);
+    console.log(`Total transactions processed: ${txProcessed}\n`);
+    console.log(`Total transactions processed: ${txProcessed}\n` +
+            `Total filtered transactions processed: ${txProcessedFilter}\n` +
+            `Total sapling transactions processed: ${saplingTx}\n` +
+            `Total orchard transactions processed: ${orchardTx}\n` +
+            `Total filtered sapling transactions processed: ${saplingTxFilter}\n` +
+            `Total filtered orchard transactions processed: ${orchardTxFilter}\n` +
+            `Total orchard actions processed: ${actionsProcessed}\n` +
+            `Total sapling spends processed: ${spendsProcessed}\n` +
+            `Total sapling outputs processed: ${outputsProcessed}`);
     // );
 
     return {
