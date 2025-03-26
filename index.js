@@ -18,7 +18,7 @@ let dbSyncLock = false;
 
 let halvingTimer;
 let halvingTimerLock = false;
-let channel, channelId;
+// let channel, channelId;
 
 const { ChartJSNodeCanvas } = require('chartjs-node-canvas');
 const ChartDataLabels = require('chartjs-plugin-datalabels');
@@ -31,6 +31,8 @@ const coingeckoApi = require('coingecko-api');
 dotenv.config();
 const CoinGeckoClient = new CoinGecko();
 const chartJSNodeCanvas = new ChartJSNodeCanvas({ width: 1000, height: 600, backgroundColour: '#2f3136'});
+
+const channelId = process.env.PRICE_CHANNEL_ID;
 
 const client = new Client({
     intents: [
@@ -53,7 +55,42 @@ client.once('ready', async () => {
 		console.log('Unable to connect to the database:', error.message);
 		process.exit(1);
 	}
+
+    // price widget
+    handleZecPriceChannel();
+    setInterval(() => {
+        handleZecPriceChannel();
+    }, 5 * 60 * 1000);
 });
+
+async function handleZecPriceChannel() {
+    const channel = await client.channels.fetch(channelId);
+    if(channel) {
+        console.log(`Zec price widget configured at ${channelId}`);
+    }
+    else {
+        console.log(`Invalid channel ${channelId}`);
+        return;
+    }
+    
+    try {      
+        const res = await fetchCoinGECKO();
+        if(res) {
+            const zecPrice = res.data.market_data.current_price.usd.toLocaleString('en-US');
+            const priceChange1h = res.data.market_data.price_change_percentage_1h;
+            const emojiUp = "🟢 ↗";;
+            const emojiDown = "🔴 ↘️";
+            const header = priceChange1h >= 0 ? emojiUp : emojiDown;
+            const channelName = `${header} ZEC : $ ${zecPrice}`;
+            channel.edit({name: `${channelName}`}).then((c) => {
+                console.log(`Channel edited, new name: ${channelName}`);
+            }).catch((err) => { throw err });
+        }
+    }
+    catch(err) {
+        console.log(err);
+    }
+}
 
 const languages = {
     pt: {
@@ -357,71 +394,71 @@ client.on('messageCreate', async (i) => {
     if(i.author.bot) return;
     const cmd = i.content.split(' ');
 
-    if(cmd[0].toLowerCase() == "^halving") {
-        if(cmd[1] && i.author.id == "290336959627395072") {            
-            channelId = cmd[1];
-            channel = await i.guild.channels.fetch(channelId);
-            if(channel) {
-                await i.reply(`Halving countdown configured at <#${channelId}>`);
-            }
-            else {
-                await i.reply(`Invalid channel <#${channelId}>`);
-                return;
-            }
+    // if(cmd[0].toLowerCase() == "^halving") {
+    //     if(cmd[1] && i.author.id == "290336959627395072") {            
+    //         channelId = cmd[1];
+    //         channel = await i.guild.channels.fetch(channelId);
+    //         if(channel) {
+    //             await i.reply(`Halving countdown configured at <#${channelId}>`);
+    //         }
+    //         else {
+    //             await i.reply(`Invalid channel <#${channelId}>`);
+    //             return;
+    //         }
 
-            halvingTimer = setInterval(async () => {               
-                if(halvingTimerLock) {
-                    console.log('not done yet, shit')
-                    return;
-                }
-                try {      
-                    halvingTimerLock = true;
-                    const res = await axios.get('http://13.58.71.62:3001/', {
-                        timeout: 5000 // Timeout of 5 seconds
-                    });
+    //         halvingTimer = setInterval(async () => {               
+    //             if(halvingTimerLock) {
+    //                 console.log('not done yet, shit')
+    //                 return;
+    //             }
+    //             try {      
+    //                 halvingTimerLock = true;
+    //                 const res = await axios.get('http://13.58.71.62:3001/', {
+    //                     timeout: 5000 // Timeout of 5 seconds
+    //                 });
 
-                    if(res && res.status == 200) {
-                        const days = String(res.data.countdown.days);
-                        const hours = String(res.data.countdown.hours);
-                        const mins = String(res.data.countdown.mins).padStart(2, '0');
-                        const secs = String(res.data.countdown.secs).padStart(2, '0');
+    //                 if(res && res.status == 200) {
+    //                     const days = String(res.data.countdown.days);
+    //                     const hours = String(res.data.countdown.hours);
+    //                     const mins = String(res.data.countdown.mins).padStart(2, '0');
+    //                     const secs = String(res.data.countdown.secs).padStart(2, '0');
 
-                        const channelName = `📅 ${days} Days, ${hours}h, ${mins}m, ${secs}s`
-                        // const halvDate = new Date(res.data.halving_date);
-                        // const channelName = `📅 ${halvDate.toLocaleDateString()} ${halvDate.toLocaleTimeString()}`
-                        // console.log(`${channelName}`)                        
+    //                     const channelName = `📅 ${days} Days, ${hours}h, ${mins}m, ${secs}s`
+    //                     // const halvDate = new Date(res.data.halving_date);
+    //                     // const channelName = `📅 ${halvDate.toLocaleDateString()} ${halvDate.toLocaleTimeString()}`
+    //                     // console.log(`${channelName}`)                        
                        
-                        const lChannel = await i.guild.channels.fetch(channelId);                         
-                        // console.log(lChannel.name)
+    //                     const lChannel = await i.guild.channels.fetch(channelId);                         
+    //                     // console.log(lChannel.name)
 
-                        lChannel.edit({name: `${channelName}`}).then((c) => {
-                            console.log(c.name);
-                            halvingTimerLock = false;
-                        }).catch((e) => {console.log(e)});
+    //                     lChannel.edit({name: `${channelName}`}).then((c) => {
+    //                         console.log(c.name);
+    //                         halvingTimerLock = false;
+    //                     }).catch((e) => {console.log(e)});
 
-                        setTimeout(() => {
-                            halvingTimerLock = false;
-                        }, 3 * 60 * 1000);
+    //                     setTimeout(() => {
+    //                         halvingTimerLock = false;
+    //                     }, 3 * 60 * 1000);
 
-                        // const lChannel2 = await i.guild.channels.fetch(channelId); 
-                        // console.log(lChannel2.name)
-                    }
-                    else {
-                        console.log("No response from server");
-                        halvingTimerLock = false;
-                    }
-                }
-                catch(e) {
-                    halvingTimerLock = false;
+    //                     // const lChannel2 = await i.guild.channels.fetch(channelId); 
+    //                     // console.log(lChannel2.name)
+    //                 }
+    //                 else {
+    //                     console.log("No response from server");
+    //                     halvingTimerLock = false;
+    //                 }
+    //             }
+    //             catch(e) {
+    //                 halvingTimerLock = false;
 
-                    console.log(e);
-                }                
-            }, 75 * 1000)                        
-        }
-        else {
-            await i.reply(`You don't have permission for this.`);
-        }
-    }
+    //                 console.log(e);
+    //             }                
+    //         }, 75 * 1000)                        
+    //     }
+    //     else {
+    //         await i.reply(`You don't have permission for this.`);
+    //     }
+    // }
 
     if(cmd[0].toLowerCase() == '$zconvert' || cmd[0].toLowerCase() == '$zconv') {
         const validFiat = await CoinGeckoClient.simple.supportedVsCurrencies();
@@ -554,22 +591,24 @@ client.on('messageCreate', async (i) => {
         await i.channel.sendTyping();
         let blockchainInfo;
         try {
-            blockchainInfo = await axios.get('http://185.62.57.21:4001/api/v1/blockchain-info');
+            blockchainInfo = await axios.get('https://mainnet.zcashexplorer.app/api/v1/blockchain-info');
         } catch(err) {
             interaction.editReply('ZcashBlockExplorer API is unavaiable.\n' + err);
             return;
         }
-        // console.log(blockchainInfo.data.valuePools)
+        // console.log(blockchainInfo.data)
+        
         await i.reply({embeds: [{                
             title: '<:zcash:1060629265961472080> Chain Value Pool Info',
             color: 0xf4b728,
             description: `Check Zcash $ZEC supply in each value pool.`,
             fields: [
-                {name: 'Total Supply', value: `<:zcash:1060629265961472080> **${blockchainInfo.data.chainSupply.chainValue.toLocaleString('en-US')} ZEC**`, inline: false},
-                {name: 'Transparent', value: `<:zcash:1060629265961472080> **${blockchainInfo.data.valuePools[0].chainValue.toLocaleString('en-US')} ZEC**`, inline: false},
+                // {name: 'Total Supply', value: `<:zcash:1060629265961472080> **${blockchainInfo.data.chainValue.toLocaleString('en-US')} ZEC**`, inline: false},
+                // {name: 'Transparent', value: `<:zcash:1060629265961472080> **${blockchainInfo.data.valuePools[0].chainValue.toLocaleString('en-US')} ZEC**`, inline: false},
                 {name: 'Sprout', value: `<:zcash:1060629265961472080> **${blockchainInfo.data.valuePools[1].chainValue.toLocaleString('en-US')} ZEC**`, inline: false},
                 {name: 'Sapling', value: `<:zcash:1060629265961472080> **${blockchainInfo.data.valuePools[2].chainValue.toLocaleString('en-US')} ZEC**`, inline: true},
                 {name: 'Orchard', value: `<:zcash:1060629265961472080> **${blockchainInfo.data.valuePools[3].chainValue.toLocaleString('en-US')} ZEC**`, inline: false},                
+                {name: 'Lockbox', value: `<:zcash:1060629265961472080> **${blockchainInfo.data.valuePools[4].chainValue.toLocaleString('en-US')} ZEC**`, inline: false},                
             ],
             footer: {text: 'Data provided by ZcashBlockExplorer API'},
             timestamp: new Date()
