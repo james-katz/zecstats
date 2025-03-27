@@ -16,8 +16,8 @@ const SYNC_PERIOD = 1152; // 1152 is roughly a day
 let txSummaryLock = false;
 let dbSyncLock = false;
 
-let halvingTimer;
-let halvingTimerLock = false;
+// let halvingTimer;
+// let halvingTimerLock = false;
 // let channel, channelId;
 
 const { ChartJSNodeCanvas } = require('chartjs-node-canvas');
@@ -32,7 +32,11 @@ dotenv.config();
 const CoinGeckoClient = new CoinGecko();
 const chartJSNodeCanvas = new ChartJSNodeCanvas({ width: 1000, height: 600, backgroundColour: '#2f3136'});
 
-const channelId = process.env.PRICE_CHANNEL_ID;
+const priceChannelId = process.env.PRICE_CHANNEL_ID;
+const saplingChannelId = process.env.SAPLING_CHANNEL_ID;
+const orchardChannelId = process.env.ORCHARD_CHANNEL_ID;
+const lockboxChannelId = process.env.LOCKBOX_CHANNEL_ID;
+const shieldedChannelId = process.env.SHIELDED_CHANNEL_ID;
 
 const client = new Client({
     intents: [
@@ -57,19 +61,22 @@ client.once('ready', async () => {
 	}
 
     // price widget
-    handleZecPriceChannel();
-    setInterval(() => {
-        handleZecPriceChannel();
+    await handleZecPriceChannel();
+    // pools widget
+    // await handlePoolsChannel();
+    setInterval(async () => {
+        await handleZecPriceChannel();
+        await handlePoolsChannel();
     }, 5 * 60 * 1000);
 });
 
 async function handleZecPriceChannel() {
-    const channel = await client.channels.fetch(channelId);
+    const channel = await client.channels.fetch(priceChannelId);
     if(channel) {
-        console.log(`Zec price widget configured at ${channelId}`);
+        // console.log(`Zec price widget configured at ${priceChannelId}`);
     }
     else {
-        console.log(`Invalid channel ${channelId}`);
+        console.log(`Invalid channel ${priceChannelId}`);
         return;
     }
     
@@ -77,7 +84,8 @@ async function handleZecPriceChannel() {
         const res = await fetchCoinGECKO();
         if(res) {
             const zecPrice = res.data.market_data.current_price.usd.toLocaleString('en-US');
-            const priceChange1h = res.data.market_data.price_change_percentage_1h;
+            const priceChange1h = res.data.market_data.price_change_percentage_1h_in_currency.usd;
+            console.log("price change 1h:", priceChange1h);
             const emojiUp = "🟢 ↗";;
             const emojiDown = "🔴 ↘️";
             const header = priceChange1h >= 0 ? emojiUp : emojiDown;
@@ -90,6 +98,42 @@ async function handleZecPriceChannel() {
     catch(err) {
         console.log(err);
     }
+}
+
+async function handlePoolsChannel() {
+    const saplingChannel = await client.channels.fetch(saplingChannelId);
+    const orchardChannel = await client.channels.fetch(orchardChannelId);
+    const lockboxChannel = await client.channels.fetch(lockboxChannelId);
+    const shieldedChannel = await client.channels.fetch(shieldedChannelId);
+
+    let blockchainInfo;
+    try {
+        blockchainInfo = await axios.get('https://mainnet.zcashexplorer.app/api/v1/blockchain-info');
+        const saplingChannelName = `🌱 Sapling: ${Math.floor(blockchainInfo.data.valuePools[2].chainValue).toLocaleString('en-US')} ZEC`;
+        const orchardChannelName = `🌳 Orchard: ${Math.floor(blockchainInfo.data.valuePools[3].chainValue).toLocaleString('en-US')} ZEC`;
+        const totalShieldedChannelName = `🛡️ Shilded: ${Math.floor(blockchainInfo.data.valuePools[2].chainValue + blockchainInfo.data.valuePools[3].chainValue).toLocaleString('en-US')} ZEC`;
+        const lockboxChannelName = `🔐 Lockbox: ${Math.floor(blockchainInfo.data.valuePools[4].chainValue).toLocaleString('en-US')} ZEC`;
+
+        saplingChannel.edit({name: `${saplingChannelName}`}).then((c) => {
+            console.log(`Channel edited, new name: ${saplingChannelName}`);
+        }).catch((err) => { throw err });
+
+        orchardChannel.edit({name: `${orchardChannelName}`}).then((c) => {
+            console.log(`Channel edited, new name: ${orchardChannelName}`);
+        }).catch((err) => { throw err });
+
+        lockboxChannel.edit({name: `${lockboxChannelName}`}).then((c) => {
+            console.log(`Channel edited, new name: ${lockboxChannelName}`);
+        }).catch((err) => { throw err });
+
+        shieldedChannel.edit({name: `${totalShieldedChannelName}`}).then((c) => {
+            console.log(`Channel edited, new name: ${totalShieldedChannelName}`);
+        }).catch((err) => { throw err });
+
+    } catch(err) {
+        console.log('ZcashBlockExplorer API is unavaiable.\n' + err);
+        return;
+    }        
 }
 
 const languages = {
