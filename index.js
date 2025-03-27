@@ -63,7 +63,7 @@ client.once('ready', async () => {
     // price widget
     await handleZecPriceChannel();
     // pools widget
-    // await handlePoolsChannel();
+    await handlePoolsChannel();
     setInterval(async () => {
         await handleZecPriceChannel();
         await handlePoolsChannel();
