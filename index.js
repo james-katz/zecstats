@@ -111,7 +111,7 @@ async function handlePoolsChannel() {
         blockchainInfo = await axios.get('https://mainnet.zcashexplorer.app/api/v1/blockchain-info');
         const saplingChannelName = `🌱 Sapling: ${Math.floor(blockchainInfo.data.valuePools[2].chainValue).toLocaleString('en-US')} ZEC`;
         const orchardChannelName = `🌳 Orchard: ${Math.floor(blockchainInfo.data.valuePools[3].chainValue).toLocaleString('en-US')} ZEC`;
-        const totalShieldedChannelName = `🛡️ Shilded: ${Math.floor(blockchainInfo.data.valuePools[2].chainValue + blockchainInfo.data.valuePools[3].chainValue).toLocaleString('en-US')} ZEC`;
+        const totalShieldedChannelName = `🛡️ Shielded: ${Math.floor(blockchainInfo.data.valuePools[1].chainValue + blockchainInfo.data.valuePools[2].chainValue + blockchainInfo.data.valuePools[3].chainValue).toLocaleString('en-US')} ZEC`;
         const lockboxChannelName = `🔐 Lockbox: ${Math.floor(blockchainInfo.data.valuePools[4].chainValue).toLocaleString('en-US')} ZEC`;
 
         saplingChannel.edit({name: `${saplingChannelName}`}).then((c) => {
