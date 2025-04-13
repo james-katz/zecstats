@@ -2,7 +2,7 @@ const { Client, GatewayIntentBits, ModalSubmitInteraction, EmbedBuilder, Attachm
 const CoinGecko = require('coingecko-api');
 const axios = require('axios');
 
-const native = require('./index.node');
+// const native = require('./index.node');
 const grpc = require('./grpc_connector');
 const lc = grpc.init('zec.rocks:443');   //na-ewr.
 
@@ -58,7 +58,7 @@ client.once('ready', async () => {
 	} catch (error) {
 		console.log('Unable to connect to the database:', error.message);
 		process.exit(1);
-	}
+	}    
 
     // price widget
     await handleZecPriceChannel();
@@ -83,7 +83,17 @@ async function handleZecPriceChannel() {
     try {      
         const res = await fetchCoinGECKO();
         if(res) {
-            const zecPrice = res.data.market_data.current_price.usd.toLocaleString('en-US');
+            const tickers = res.data.tickers;
+            let coinex = {};
+            tickers.forEach(t => {
+                if (t.target == 'USDT' && t.market.identifier == 'coinex') {
+                    coinex = t;
+                }
+            })
+            
+            // const zecPrice = res.data.market_data.current_price.usd.toLocaleString('en-US');
+            const zecPrice = coinex.last.toLocaleString('en-US');
+
             const priceChange1h = res.data.market_data.price_change_percentage_1h_in_currency.usd;
             console.log("price change 1h:", priceChange1h);
             const emojiUp = "🟢 ↗";;
@@ -420,13 +430,13 @@ async function fetchCoinGECKO() {
     let res;    
     try {
         res = await CoinGeckoClient.coins.fetch('zcash', {
-            tickers: false,
+            tickers: true,
             market_data: true,
             community_data: false,
             developer_data: false,
             localization: false,
             sparkline: false
-        });
+        });                       
     }
     catch(err) {
         console.log(err);
