@@ -118,11 +118,17 @@ async function handlePoolsChannel() {
 
     let blockchainInfo;
     try {
-        blockchainInfo = await axios.get('https://mainnet.zcashexplorer.app/api/v1/blockchain-info');
-        const saplingChannelName = `🌱 Sapling: ${Math.floor(blockchainInfo.data.valuePools[2].chainValue).toLocaleString('en-US')} ZEC`;
-        const orchardChannelName = `🌳 Orchard: ${Math.floor(blockchainInfo.data.valuePools[3].chainValue).toLocaleString('en-US')} ZEC`;
-        const totalShieldedChannelName = `🛡️ Shielded: ${Math.floor(blockchainInfo.data.valuePools[1].chainValue + blockchainInfo.data.valuePools[2].chainValue + blockchainInfo.data.valuePools[3].chainValue).toLocaleString('en-US')} ZEC`;
-        const lockboxChannelName = `🔐 Lockbox: ${Math.floor(blockchainInfo.data.valuePools[4].chainValue).toLocaleString('en-US')} ZEC`;
+        // blockchainInfo = await axios.get('https://mainnet.zcashexplorer.app/api/v1/blockchain-info');
+        // const saplingChannelName = `🌱 Sapling: ${Math.floor(blockchainInfo.data.valuePools[2].chainValue).toLocaleString('en-US')} ZEC`;
+        // const orchardChannelName = `🌳 Orchard: ${Math.floor(blockchainInfo.data.valuePools[3].chainValue).toLocaleString('en-US')} ZEC`;
+        // const totalShieldedChannelName = `🛡️ Shielded: ${Math.floor(blockchainInfo.data.valuePools[1].chainValue + blockchainInfo.data.valuePools[2].chainValue + blockchainInfo.data.valuePools[3].chainValue).toLocaleString('en-US')} ZEC`;
+        // const lockboxChannelName = `🔐 Lockbox: ${Math.floor(blockchainInfo.data.valuePools[4].chainValue).toLocaleString('en-US')} ZEC`;
+
+        blockchainInfo = await axios.get('https://zecstats.info/api/status');
+        const saplingChannelName = `🌱 Sapling: ${Math.floor(blockchainInfo.data.valuePools.sapling).toLocaleString('en-US')} ZEC`;
+        const orchardChannelName = `🌳 Orchard: ${Math.floor(blockchainInfo.data.valuePools.orchard).toLocaleString('en-US')} ZEC`;
+        const totalShieldedChannelName = `🛡️ Shielded: ${Math.floor(blockchainInfo.data.valuePools.shielded).toLocaleString('en-US')} ZEC`;
+        const lockboxChannelName = `🔐 Lockbox: ${Math.floor(blockchainInfo.data.valuePools.lockbox).toLocaleString('en-US')} ZEC`;
 
         saplingChannel.edit({name: `${saplingChannelName}`}).then((c) => {
             console.log(`Channel edited, new name: ${saplingChannelName}`);
@@ -514,6 +520,79 @@ client.on('messageCreate', async (i) => {
     //     }
     // }
 
+    // if(cmd[0].toLowerCase() == '$awty' ) {
+    //     try {
+    //         const otherTicker = cmd[1] || 'btc';
+    //         const { data: allCoins } = await axios.get('https://api.coingecko.com/api/v3/coins/list');
+
+    //         // get all coins matching the ticker symbol
+    //         const matches = allCoins.filter(c => c.symbol.toLowerCase() === otherTicker.toLowerCase());
+
+    //         // pick the highest-marketcap one dynamically
+    //         const { data: marketData } = await axios.get('https://api.coingecko.com/api/v3/coins/markets', {
+    //             params: { vs_currency: 'usd', ids: matches.map(c => c.id).join(',') }
+    //         });
+
+    //         const otherCoin = marketData.sort((a, b) => b.market_cap - a.market_cap)[0];
+            
+    //         if (!otherCoin) {
+    //             await i.reply({embeds: [{                
+    //                 title: '🚫 Currency error!',
+    //                 color: 0xff0000,
+    //                 description: `No cruptocurrency named ${otherTicker.toUpperCase} found.`
+    //             }]});
+    //             return;
+    //         }
+
+    //         if(otherTicker.toLowerCase() === 'zec') {
+    //             await i.reply({embeds: [{                
+    //                 title: '🚫 Trying to check $ZEC against $ZEC?',
+    //                 color: 0xff0000,
+    //                 description: `Hmmm`
+    //             }]});
+    //             return;
+    //         }
+
+    //         const ids = ['zcash', otherCoin.id].join(',');
+    //         const vs_currency = "usd";
+    //         const { data } = await axios.get('https://api.coingecko.com/api/v3/coins/markets', {
+    //             params: { vs_currency, ids },
+    //         });
+
+    //         console.log(data)
+            
+    //         await i.reply({
+    //             embeds: [
+    //                 {
+    //                 title: '<:zcash:1060629265961472080> Are we there yet?',
+    //                 color: 0xf4b728,
+    //                 description: `${
+    //                     data[1].market_cap >= data[0].market_cap
+    //                     ? `✅ Yes! ZEC has passed **${otherTicker.toUpperCase()}**'s market cap.`
+    //                     : `❌ We're not there yet — still ${(data[0].market_cap - data[1].market_cap).toLocaleString(undefined, {maximumFractionDigits: 0})} USD to go!`
+    //                 }`,
+    //                 fields: [
+    //                     {
+    //                         name: 'Current ZEC Price',
+    //                         value: `<:zcash:1060629265961472080> **$${data[1].current_price.toLocaleString(undefined, {maximumFractionDigits: 2})}** USD`,
+    //                         inline: true,
+    //                     },
+    //                     {
+    //                         name: `ZEC with ${otherTicker.toUpperCase()} Market Cap`,
+    //                         value: `**$${(data[0].market_cap / data[1].circulating_supply).toLocaleString(undefined, {maximumFractionDigits: 2})}** USD`,
+    //                         inline: false,
+    //                     },
+    //                 ],
+    //                 footer: { text: 'Based on live CoinGecko data' },
+    //                 },
+    //             ],
+    //         });
+    //     }
+    //     catch(e) {
+    //         console.log(e);
+    //     }
+    // }
+
     if(cmd[0].toLowerCase() == '$zconvert' || cmd[0].toLowerCase() == '$zconv') {
         const validFiat = await CoinGeckoClient.simple.supportedVsCurrencies();
         let amountZec = parseFloat(cmd[1].replace(/,/g,'.'));
@@ -641,7 +720,8 @@ client.on('messageCreate', async (i) => {
 
     }
     
-    else if(cmd[0].toLowerCase() == '$zpool' || cmd[0].toLowerCase() == '$zpools' || cmd[0].toLowerCase() == '$poolz') {
+    // else if(cmd[0].toLowerCase() == '$zpool' || cmd[0].toLowerCase() == '$zpools' || cmd[0].toLowerCase() == '$poolz') {
+    else if(cmd[0].toLowerCase() == '$ztest') {
         await i.channel.sendTyping();
         let blockchainInfo;
         try {
@@ -652,17 +732,22 @@ client.on('messageCreate', async (i) => {
         }
         // console.log(blockchainInfo.data)
         
+        let totalSupply = blockchainInfo.data.chainSupply.chainValue;
+        let totalShield = blockchainInfo.data.valuePools[1].chainValue + blockchainInfo.data.valuePools[2].chainValue + blockchainInfo.data.valuePools[3].chainValue;
+        let shieldPercent = (totalShield / totalSupply) * 100;
+        
         await i.reply({embeds: [{                
             title: '<:zcash:1060629265961472080> Chain Value Pool Info',
             color: 0xf4b728,
             description: `Check Zcash $ZEC supply in each value pool.`,
             fields: [
-                // {name: 'Total Supply', value: `<:zcash:1060629265961472080> **${blockchainInfo.data.chainValue.toLocaleString('en-US')} ZEC**`, inline: false},
+                {name: 'Total Supply', value: `<:zcash:1060629265961472080> **${totalSupply.toLocaleString('en-US')} ZEC**`, inline: false},
                 // {name: 'Transparent', value: `<:zcash:1060629265961472080> **${blockchainInfo.data.valuePools[0].chainValue.toLocaleString('en-US')} ZEC**`, inline: false},
+                {name: 'Shielded:', value: `<:zcash:1060629265961472080> **${totalShield.toLocaleString('en-US')} ZEC** (${shieldPercent.toFixed(2)} %)`, inline: false},                
                 {name: 'Sprout', value: `<:zcash:1060629265961472080> **${blockchainInfo.data.valuePools[1].chainValue.toLocaleString('en-US')} ZEC**`, inline: false},
                 {name: 'Sapling', value: `<:zcash:1060629265961472080> **${blockchainInfo.data.valuePools[2].chainValue.toLocaleString('en-US')} ZEC**`, inline: true},
                 {name: 'Orchard', value: `<:zcash:1060629265961472080> **${blockchainInfo.data.valuePools[3].chainValue.toLocaleString('en-US')} ZEC**`, inline: false},                
-                {name: 'Lockbox', value: `<:zcash:1060629265961472080> **${blockchainInfo.data.valuePools[4].chainValue.toLocaleString('en-US')} ZEC**`, inline: false},                
+                {name: 'Lockbox', value: `<:zcash:1060629265961472080> **${blockchainInfo.data.valuePools[4].chainValue.toLocaleString('en-US')} ZEC**`, inline: false},                                
             ],
             footer: {text: 'Data provided by ZcashBlockExplorer API'},
             timestamp: new Date()
