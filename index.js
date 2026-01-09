@@ -81,24 +81,15 @@ async function handleZecPriceChannel() {
     }
     
     try {      
-        const res = await fetchCoinGECKO();
-        if(res) {
-            const tickers = res.data.tickers;
-            let coinex = {};
-            tickers.forEach(t => {
-                if (t.target == 'USDT' && t.market.identifier == 'coinex') {
-                    coinex = t;
-                }
-            })
+        blockchainInfo = await axios.get('https://zecstats.info/api/status');
+        if(blockchainInfo) {
+            const zecPrice = blockchainInfo.data.priceUsd.toLocaleString('en-US');
             
-            // const zecPrice = res.data.market_data.current_price.usd.toLocaleString('en-US');
-            const zecPrice = coinex.last.toLocaleString('en-US');
-
-            const priceChange1h = res.data.market_data.price_change_percentage_1h_in_currency.usd;
-            console.log("price change 1h:", priceChange1h);
+            const priceChange24h = blockchainInfo.data.priceChange24h;
+            console.log("price change 24h:", priceChange24h);
             const emojiUp = "🟢 ↗";;
             const emojiDown = "🔴 ↘️";
-            const header = priceChange1h >= 0 ? emojiUp : emojiDown;
+            const header = priceChange24h >= 0 ? emojiUp : emojiDown;
             const channelName = `${header} ZEC : $ ${zecPrice}`;
             channel.edit({name: `${channelName}`}).then((c) => {
                 console.log(`Channel edited, new name: ${channelName}`);
