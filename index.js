@@ -1,5 +1,5 @@
 const { Client, GatewayIntentBits, ModalSubmitInteraction, EmbedBuilder, AttachmentBuilder, enableValidators, CommandInteractionOptionResolver, Utils } = require('discord.js');
-const CoinGecko = require('coingecko-api');
+
 const axios = require('axios');
 
 // const native = require('./index.node');
@@ -26,10 +26,9 @@ const ChartDataLabels = require('chartjs-plugin-datalabels');
 const { v4: uuidv4 } = require('uuid');
 
 const dotenv = require('dotenv');
-const coingeckoApi = require('coingecko-api');
+
 
 dotenv.config();
-const CoinGeckoClient = new CoinGecko();
 const chartJSNodeCanvas = new ChartJSNodeCanvas({ width: 1000, height: 600, backgroundColour: '#2f3136'});
 
 const priceChannelId = process.env.PRICE_CHANNEL_ID;
@@ -377,7 +376,15 @@ client.on('interactionCreate', async interaction => {
 });
 
 async function createChart() {
-    const res = await CoinGeckoClient.coins.fetchMarketChart('zcash', {days: 1, vs_currency: 'usd'});
+    const res = await axios.get('https://api.coingecko.com/api/v3/coins/zcash/market_chart', {
+        headers: {
+            'User-Agent': 'zec-stats-bot'
+        },
+        params: {
+            vs_currency: 'usd',
+            days: 1
+        }
+    });
     const mapped = res.data.prices.map(el => {
         let m = {};
         m.x = new Date(el[0]).toLocaleTimeString();
@@ -426,19 +433,25 @@ async function createChart() {
 async function fetchCoinGECKO() {
     let res;    
     try {
-        res = await CoinGeckoClient.coins.fetch('zcash', {
-            tickers: true,
-            market_data: true,
-            community_data: false,
-            developer_data: false,
-            localization: false,
-            sparkline: false
-        });                       
+        res = await axios.get('https://api.coingecko.com/api/v3/coins/zcash', {
+            headers: {
+                'User-Agent': 'zec-stats-bot'
+            },
+            params: {
+                tickers: true,
+                market_data: true,
+                community_data: false,
+                developer_data: false,
+                localization: false,
+                sparkline: false
+            }
+        });
+        return { success: true, data: res.data };
     }
     catch(err) {
         console.log(err);
+        return { success: false };
     }
-    return res;
 }
 
 client.on('messageCreate', async (i) => {
@@ -585,7 +598,9 @@ client.on('messageCreate', async (i) => {
     // }
 
     if(cmd[0].toLowerCase() == '$zconvert' || cmd[0].toLowerCase() == '$zconv') {
-        const validFiat = await CoinGeckoClient.simple.supportedVsCurrencies();
+        const validFiat = await axios.get('https://api.coingecko.com/api/v3/simple/supported_vs_currencies', {
+            headers: { 'User-Agent': 'zec-stats-bot' }
+        });
         let amountZec = parseFloat(cmd[1].replace(/,/g,'.'));
         const convertFrom = cmd[2];
         const currency = cmd[4];
@@ -617,9 +632,12 @@ client.on('messageCreate', async (i) => {
             return;
         }
 
-        const zecPrice = await CoinGeckoClient.simple.price({
-            ids: 'zcash',
-            vs_currencies: (convertFrom.toLowerCase() === 'zec' ? currency.toLowerCase() : convertFrom.toLowerCase())
+        const zecPrice = await axios.get('https://api.coingecko.com/api/v3/simple/price', {
+            headers: { 'User-Agent': 'zec-stats-bot' },
+            params: {
+                ids: 'zcash',
+                vs_currencies: (convertFrom.toLowerCase() === 'zec' ? currency.toLowerCase() : convertFrom.toLowerCase())
+            }
         });
 
         if(convertFrom.toLowerCase() !== 'zec') {
